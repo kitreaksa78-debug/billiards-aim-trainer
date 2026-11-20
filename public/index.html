@@ -4,34 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#0a0f14">
+<link rel="icon" href="data:,">
 <title>Billiards Aim — គណនាមុំបាល់</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; padding: 14px 12px 40px; min-height: 100vh;
+    margin: 0; padding: 12px 12px 36px; min-height: 100vh;
     background: #0a0f14; color: #e6eef8;
     font: 15px/1.6 system-ui, "Khmer OS", sans-serif;
     overscroll-behavior: contain;
   }
   .wrap { max-width: 760px; margin: 0 auto; }
-  h1 { font-size: 19px; margin: 0 0 2px; }
-  .sub { color: #8fa2b8; font-size: 13px; margin: 0 0 12px; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  .sub { color: #8fa2b8; font-size: 12.5px; margin: 0 0 10px; }
   canvas { display: block; width: 100%; border-radius: 14px; touch-action: none; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
-  .stat { background: #121a24; border: 1px solid #223040; border-radius: 12px; padding: 9px 10px; }
-  .stat .k { color: #8fa2b8; font-size: 11.5px; }
-  .stat .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .stat .v small { font-size: 12px; font-weight: 500; color: #9fb0c4; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .stat { background: #121a24; border: 1px solid #223040; border-radius: 12px; padding: 8px 9px; }
+  .stat .k { color: #8fa2b8; font-size: 11px; }
+  .stat .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .v small { font-size: 11.5px; font-weight: 500; color: #9fb0c4; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   button {
-    flex: 1 1 120px; min-height: 46px; border-radius: 12px; cursor: pointer;
-    border: 1px solid #2a3b4e; background: #16202b; color: #dce8f6; font-size: 14px; font-weight: 600;
+    flex: 1 1 100px; min-height: 44px; border-radius: 12px; cursor: pointer;
+    border: 1px solid #2a3b4e; background: #16202b; color: #dce8f6; font-size: 13.5px; font-weight: 600;
   }
   button.primary { background: #1d7a4c; border-color: #27a163; color: #fff; }
   button:active { transform: scale(.99); }
-  .hint { margin-top: 12px; padding: 11px 13px; border-radius: 12px; background: #10182299; border: 1px solid #223040; color: #9fb0c4; font-size: 13px; }
-  .status { margin-top: 10px; font-size: 13.5px; min-height: 20px; }
+  .hint { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #10182299; border: 1px solid #223040; color: #9fb0c4; font-size: 12.5px; }
+  .status { margin-top: 8px; font-size: 13px; min-height: 20px; }
   .status.warn { color: #ffc65c; }
   .status.ok { color: #4fd99a; }
 </style>
@@ -39,7 +40,7 @@
 <body>
 <div class="wrap">
   <h1>🎱 គណនា Aim — Billiards</h1>
-  <p class="sub">អូសបាល់ស និងបាល់គោល (ឬចុចលើតុ) · ចុចរន្ធដើម្បីជ្រើស · វាគណនា ghost ball ជូន</p>
+  <p class="sub">អូសបាល់ · ចុចរន្ធដើម្បីជ្រើស · បង្ហាញ ghost ball + មុំ + កម្លាំង</p>
 
   <canvas id="table" aria-label="Billiard table"></canvas>
 
@@ -58,52 +59,76 @@
   <div class="status" id="status"></div>
 
   <div class="hint">
-    <b>របៀបប្រើ៖</b> ១) អូសបាល់ស (cue) ទៅទីតាំងរបស់វា ២) អូសបាល់ពណ៌ទៅទីតាំងរបស់វា
-    ៣) ចុចរន្ធដែលចង់ដាក់ — បន្ទាត់ស = ទិសបញ្ជូន, រង្វង់ដាច់ៗ = ghost ball (ចំណុចប៉ះ),
-    បន្ទាត់លឿង = ផ្លូវបាល់គោលទៅរន្ធ។
+    <b>របៀបប្រើ៖</b> អូសបាល់ស (CUE) និងបាល់ BALL ទៅទីតាំងរបស់វា → ចុចរន្ធដែលចង់ដាក់។
+    បន្ទាត់ស = ទិសបញ្ជូន · រង្វង់ដាច់ៗ = ghost ball (ចំណុចប៉ះ) · បន្ទាត់លឿង = ផ្លូវបាល់ទៅរន្ធ។
+    ចុចលើតុទទេ = ផ្លាស់បាល់ស។
   </div>
 </div>
 
 <script>
 (() => {
-  const W = 1000, H = 500, R = 16, M = 34;      // table units (2:1), ball radius, margin
   const cv = document.getElementById('table');
   const ctx = cv.getContext('2d');
   const $ = (id) => document.getElementById(id);
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-  const POCKETS = [
-    { x: 0, y: 0, name: 'កំពូល-ឆ្វេង' },
-    { x: W / 2, y: 0, name: 'កំពូល-កណ្តាល' },
-    { x: W, y: 0, name: 'កំពូល-ស្តាំ' },
-    { x: 0, y: H, name: 'ក្រោម-ឆ្វេង' },
-    { x: W / 2, y: H, name: 'ក្រោម-កណ្តាល' },
-    { x: W, y: H, name: 'ក្រោម-ស្តាំ' },
-  ];
+  let TW = 1000, TH = 500;      // table units (orientation dependent)
+  let R = 16;                   // ball radius in table units
+  let M = 30;                   // rail margin
+  let POCKETS = [];
+  let cue = { x: 0, y: 0 };
+  let obj = { x: 0, y: 0 };
 
-  const START = {
-    cue: { x: 250, y: H / 2 },
-    obj: { x: 660, y: 190 },
-  };
-
-  let cue = { ...START.cue };
-  let obj = { ...START.obj };
-  let pocketIndex = -1;      // -1 = auto (best)
+  let portrait = null;
+  let pocketIndex = -1;         // -1 = auto (best)
   let bankMode = false;
   let drag = null;
   let scale = 1, offX = 0, offY = 0;
 
+  function buildTable(isPortrait) {
+    portrait = isPortrait;
+    if (isPortrait) {
+      TW = 560; TH = 1120;
+    } else {
+      TW = 1000; TH = 500;
+    }
+    R = Math.max(12, Math.round(TW * 0.0285));
+    M = Math.round(TW * 0.05);
+    POCKETS = [
+      { x: 0, y: 0, name: 'កំពូល-ឆ្វេង' },
+      { x: TW / 2, y: 0, name: 'កំពូល-កណ្តាល' },
+      { x: TW, y: 0, name: 'កំពូល-ស្តាំ' },
+      { x: 0, y: TH, name: 'ក្រោម-ឆ្វេង' },
+      { x: TW / 2, y: TH, name: 'ក្រោម-កណ្តាល' },
+      { x: TW, y: TH, name: 'ក្រោម-ស្តាំ' },
+    ];
+    cue = { x: TW * 0.5, y: TH * 0.75 };
+    obj = { x: TW * 0.5, y: TH * 0.35 };
+    pocketIndex = -1;
+    bankMode = false;
+  }
+
   // ---------- layout ----------
   function resize() {
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait !== portrait) buildTable(isPortrait);
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    const cssW = cv.parentElement.clientWidth;
-    const cssH = Math.round(cssW * (H + 2 * M) / (W + 2 * M));
+    // fill the available width; on phones this makes the table as large as possible
+    const ratio = (TW + 2 * M) / (TH + 2 * M);
+    const cssW = Math.round(cv.parentElement.clientWidth);
+    const cssH = Math.round(cssW / ratio);
+
+    cv.style.width = cssW + 'px';
     cv.style.height = cssH + 'px';
+    cv.style.margin = '0 auto';
     cv.width = Math.round(cssW * dpr);
     cv.height = Math.round(cssH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    scale = Math.min(cssW / (W + 2 * M), cssH / (H + 2 * M));
-    offX = (cssW - W * scale) / 2;
-    offY = (cssH - H * scale) / 2;
+
+    scale = Math.min(cssW / (TW + 2 * M), cssH / (TH + 2 * M));
+    offX = (cssW - TW * scale) / 2;
+    offY = (cssH - TH * scale) / 2;
     draw();
   }
 
@@ -114,48 +139,52 @@
   };
 
   // ---------- geometry ----------
-  const unit = (dx, dy) => {
-    const l = Math.hypot(dx, dy) || 1;
-    return { x: dx / l, y: dy / l };
-  };
+  const unit = (dx, dy) => { const l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l }; };
   const dot = (a, b) => a.x * b.x + a.y * b.y;
   const deg = (rad) => (rad * 180) / Math.PI;
 
   function mirrorPocket(p) {
     // one-rail bank: mirror the pocket across the cushion nearest the object ball
-    return obj.y <= H / 2
+    return obj.y <= TH / 2
       ? { x: p.x, y: -p.y, name: p.name + ' (bank)' }
-      : { x: p.x, y: 2 * H - p.y, name: p.name + ' (bank)' };
+      : { x: p.x, y: 2 * TH - p.y, name: p.name + ' (bank)' };
+  }
+
+  function reflectPoint(from, target) {
+    // where the straight line to the mirrored pocket crosses the cushion
+    if (target.y < 0) return { x: from.x + (target.x - from.x) * (from.y / (from.y - target.y)), y: 0 };
+    if (target.y > TH) return { x: from.x + (target.x - from.x) * ((TH - from.y) / (target.y - from.y)), y: TH };
+    if (target.x < 0) return { x: 0, y: from.y + (target.y - from.y) * (from.x / (from.x - target.x)) };
+    return { x: TW, y: from.y + (target.y - from.y) * ((TW - from.x) / (target.x - from.x)) };
   }
 
   function shot() {
     const u = unit(obj.x - cue.x, obj.y - cue.y);
     const ghost = { x: obj.x - u.x * 2 * R, y: obj.y - u.y * 2 * R };
-    const diag = Math.hypot(W, H);
-
-    let best = null;
-    POCKETS.forEach((p, i) => {
-      const target = bankMode ? mirrorPocket(p) : p;
-      const v = unit(target.x - obj.x, target.y - obj.y);
-      const c = Math.max(-1, Math.min(1, dot(u, v)));
-      const cut = deg(Math.acos(c));
-      if (cut > 80) return;
-      const dist = Math.hypot(target.x - obj.x, target.y - obj.y);
-      const score = c - 0.2 * (dist / diag);
-      if (!best || score > best.score) best = { i, score, cut, target, dist };
-    });
-
-    if (!best) return { ok: false };
+    const diag = Math.hypot(TW, TH);
 
     if (pocketIndex >= 0) {
       const p = POCKETS[pocketIndex];
       const target = bankMode ? mirrorPocket(p) : p;
       const v = unit(target.x - obj.x, target.y - obj.y);
-      const cut = deg(Math.acos(Math.max(-1, Math.min(1, dot(u, v)))));
-      return { ok: true, cut, target, ghost, u, pocket: p, index: pocketIndex, dist: Math.hypot(target.x - obj.x, target.y - obj.y) };
+      const cut = deg(Math.acos(clamp(dot(u, v), -1, 1)));
+      return { ok: true, cut, target, ghost, pocket: p, dist: Math.hypot(target.x - obj.x, target.y - obj.y) };
     }
-    const p = POCKETS[best.i];
-    return { ok: true, cut: best.cut, target: best.target, ghost, u, pocket: p, index: best.i, dist: best.dist };
+
+    let best = null;
+    POCKETS.forEach((p) => {
+      const target = bankMode ? mirrorPocket(p) : p;
+      const v = unit(target.x - obj.x, target.y - obj.y);
+      const c = clamp(dot(u, v), -1, 1);
+      const cut = deg(Math.acos(c));
+      if (cut > 80) return;
+      const dist = Math.hypot(target.x - obj.x, target.y - obj.y);
+      const score = c - 0.2 * (dist / diag);
+      if (!best || score > best.score) best = { score, cut, target, pocket: p, dist };
+    });
+
+    if (!best) return { ok: false };
+    return { ok: true, cut: best.cut, target: best.target, ghost, pocket: best.pocket, dist: best.dist };
   }
 
   // ---------- drawing ----------
@@ -195,29 +224,26 @@
   }
 
   function draw() {
-    const cssW = cv.width / (window.devicePixelRatio || 1);
-    const cssH = cv.height / (window.devicePixelRatio || 1);
+    const cssW = cv.width / Math.min(window.devicePixelRatio || 1, 2.5);
+    const cssH = cv.height / Math.min(window.devicePixelRatio || 1, 2.5);
     ctx.clearRect(0, 0, cssW, cssH);
 
-    // rails
     const tl = toScreen({ x: 0, y: 0 });
     ctx.fillStyle = '#3a2a1c';
     ctx.beginPath();
-    ctx.roundRect(tl.x - M * scale, tl.y - M * scale, (W + 2 * M) * scale, (H + 2 * M) * scale, 14);
+    ctx.roundRect(tl.x - M * scale, tl.y - M * scale, (TW + 2 * M) * scale, (TH + 2 * M) * scale, 14);
     ctx.fill();
 
-    // felt
-    const felt = ctx.createLinearGradient(tl.x, tl.y, tl.x, tl.y + H * scale);
+    const felt = ctx.createLinearGradient(tl.x, tl.y, tl.x, tl.y + TH * scale);
     felt.addColorStop(0, '#0f7a48');
     felt.addColorStop(1, '#0a5c37');
     ctx.fillStyle = felt;
-    ctx.fillRect(tl.x, tl.y, W * scale, H * scale);
+    ctx.fillRect(tl.x, tl.y, TW * scale, TH * scale);
 
-    // pockets
     POCKETS.forEach((p, i) => {
       const s = toScreen(p);
       ctx.beginPath();
-      ctx.arc(s.x, s.y, 22 * scale, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y, 20 * scale, 0, Math.PI * 2);
       ctx.fillStyle = i === pocketIndex ? '#ffcf4d' : '#07110c';
       ctx.fill();
     });
@@ -225,11 +251,6 @@
     const s = shot();
 
     if (s.ok) {
-      // cue -> ghost
-      line(cue, s.ghost, '#ffffff', 2.4);
-      // ghost circle
-      drawBall(s.ghost, R, '#ffffff', true);
-      // object -> pocket (and bank leg)
       if (bankMode) {
         const corner = reflectPoint(obj, s.target);
         line(obj, corner, '#8be9ff', 2, [4, 5]);
@@ -237,13 +258,8 @@
       } else {
         line(obj, s.target, '#ffd84d', 2, [6, 5]);
       }
-      // ghost marker ring on object ball
-      const so = toScreen(obj);
-      ctx.beginPath();
-      ctx.arc(so.x, so.y, R * scale, Math.PI * 1.15, Math.PI * 1.85);
-      ctx.strokeStyle = '#ffffffbb';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      line(cue, s.ghost, '#ffffff', 2.4);
+      drawBall(s.ghost, R, '#ffffff', true);
 
       $('aimAngle').innerHTML = deg(Math.atan2(s.ghost.y - cue.y, s.ghost.x - cue.x)).toFixed(1) + '<small>°</small>';
       $('cutAngle').innerHTML = s.cut.toFixed(1) + '<small>°</small>';
@@ -254,13 +270,10 @@
       const st = $('status');
       if (s.cut > 70) {
         st.className = 'status warn';
-        st.textContent = '⚠️ មុំកាត់ធំ (' + s.cut.toFixed(0) + '°) — ពិបាកដាក់ចូល ព្យាយាមរន្ធផ្សេង';
-      } else if (bankMode) {
-        st.className = 'status ok';
-        st.textContent = '✓ ផ្លូវត្រឡប់ 1 ជញ្ជាំង → ' + s.pocket.name;
+        st.textContent = '⚠️ មុំកាត់ធំ (' + s.cut.toFixed(0) + '°) — ពិបាកដាក់ចូល';
       } else {
         st.className = 'status ok';
-        st.textContent = '✓ ដាក់ចូល ' + s.pocket.name + ' · មុំកាត់ ' + s.cut.toFixed(1) + '°';
+        st.textContent = '✓ ' + (bankMode ? 'ត្រឡប់ 1 ជញ្ជាំង → ' : 'ដាក់ចូល ') + s.pocket.name + ' · cut ' + s.cut.toFixed(1) + '°';
       }
     } else {
       $('aimAngle').innerHTML = '—<small>°</small>';
@@ -271,41 +284,36 @@
       st.textContent = '✗ គ្មានផ្លូវដាក់ចូល — ផ្លាស់បាល់ ឬជ្រើសរន្ធផ្សេង';
     }
 
-    // balls
     drawBall(cue, R, '#f4f6fa');
     drawBall(obj, R, '#e8452f');
-    // labels
-    const sc = toScreen(cue), so2 = toScreen(obj);
-    ctx.font = '600 ' + Math.round(12) + 'px system-ui, sans-serif';
-    ctx.fillStyle = '#0b1a12';
-    ctx.textAlign = 'center';
-    ctx.fillText('CUE', sc.x, sc.y + 4);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('BALL', so2.x, so2.y + 4);
-  }
 
-  function reflectPoint(from, target) {
-    // where the path from `from` to mirrored `target` crosses the rail
-    const my = (from.y + target.y) / 2;
-    if (target.y < 0) return { x: from.x + (target.x - from.x) * ((from.y - 0) / (from.y - target.y)), y: 0 };
-    if (target.y > H) return { x: from.x + (target.x - from.x) * ((H - from.y) / (target.y - from.y)), y: H };
-    if (target.x < 0) return { x: 0, y: from.y + (target.y - from.y) * ((from.x - 0) / (from.x - target.x)) };
-    return { x: W, y: from.y + (target.y - from.y) * ((W - from.x) / (target.x - from.x)) };
+    const sc = toScreen(cue), so = toScreen(obj);
+    const fs = Math.max(9, Math.round(R * scale * 0.55));
+    ctx.font = '700 ' + fs + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#0b1a12';
+    ctx.fillText('CUE', sc.x, sc.y + fs * 0.35);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('BALL', so.x, so.y + fs * 0.35);
   }
 
   // ---------- interaction ----------
   function pick(clientX, clientY) {
     const p = toTable(clientX, clientY);
-
     for (let i = 0; i < POCKETS.length; i++) {
-      if (Math.hypot(POCKETS[i].x - p.x, POCKETS[i].y - p.y) < 40) return { type: 'pocket', i };
+      if (Math.hypot(POCKETS[i].x - p.x, POCKETS[i].y - p.y) < R * 2.5) return { type: 'pocket', i };
     }
-    if (Math.hypot(cue.x - p.x, cue.y - p.y) < R * 2.2) return { type: 'cue' };
-    if (Math.hypot(obj.x - p.x, obj.y - p.y) < R * 2.2) return { type: 'obj' };
+    if (Math.hypot(cue.x - p.x, cue.y - p.y) < R * 2.6) return { type: 'cue' };
+    if (Math.hypot(obj.x - p.x, obj.y - p.y) < R * 2.6) return { type: 'obj' };
     return null;
   }
 
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  function place(ball, clientX, clientY) {
+    const p = toTable(clientX, clientY);
+    ball.x = clamp(p.x, R, TW - R);
+    ball.y = clamp(p.y, R, TH - R);
+    draw();
+  }
 
   cv.addEventListener('pointerdown', (e) => {
     cv.setPointerCapture(e.pointerId);
@@ -315,45 +323,36 @@
       draw();
       return;
     }
-    if (hit) {
-      drag = hit.type;
-      move(e);
-      return;
-    }
-    // tap empty felt = move the selected ball there (default: cue if no drag started)
+    if (hit) { drag = hit.type; place(drag === 'cue' ? cue : obj, e.clientX, e.clientY); return; }
+
     const p = toTable(e.clientX, e.clientY);
-    if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) {
+    if (p.x >= 0 && p.x <= TW && p.y >= 0 && p.y <= TH) {
       drag = 'cue';
-      cue.x = clamp(p.x, R, W - R);
-      cue.y = clamp(p.y, R, H - R);
-      draw();
+      place(cue, e.clientX, e.clientY);
     }
   });
 
-  function move(e) {
+  cv.addEventListener('pointermove', (e) => {
     if (!drag) return;
-    const p = toTable(e.clientX, e.clientY);
-    const b = drag === 'cue' ? cue : obj;
-    b.x = clamp(p.x, R, W - R);
-    b.y = clamp(p.y, R, H - R);
-    draw();
-  }
-
-  cv.addEventListener('pointermove', (e) => { if (drag) { e.preventDefault(); move(e); } });
+    e.preventDefault();
+    place(drag === 'cue' ? cue : obj, e.clientX, e.clientY);
+  });
   cv.addEventListener('pointerup', () => { drag = null; });
   cv.addEventListener('pointercancel', () => { drag = null; });
 
   $('best').onclick = () => { pocketIndex = -1; bankMode = false; draw(); };
   $('bank').onclick = () => { bankMode = !bankMode; draw(); };
-  $('reset').onclick = () => {
-    cue = { ...START.cue }; obj = { ...START.obj };
-    pocketIndex = -1; bankMode = false; draw();
-  };
+  $('reset').onclick = () => { buildTable(portrait); resize(); };
+
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 150));
   resize();
 
-  // expose for quick checks in the console
-  window.__aim = { state: () => ({ cue, obj, pocketIndex, bankMode, shot: shot() }), set: (c, o) => { cue = c; obj = o; draw(); } };
+  // hand handle for quick checks / automation
+  window.__aim = {
+    state: () => ({ cue: { ...cue }, obj: { ...obj }, pocketIndex, bankMode, table: { TW, TH, R }, shot: shot() }),
+    set: (c, o) => { if (c) cue = { ...cue, ...c }; if (o) obj = { ...obj, ...o }; draw(); },
+  };
 })();
 </script>
 </body>
