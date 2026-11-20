@@ -253,6 +253,18 @@
     ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]);
   }
 
+  // rounded rect without ctx.roundRect (older Android WebView/Chrome lacks it)
+  function rrect(x, y, w, h, r) {
+    const rad = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rad);
+    ctx.arcTo(x + w, y + h, x, y + h, rad);
+    ctx.arcTo(x, y + h, x, y, rad);
+    ctx.arcTo(x, y, x + w, y, rad);
+    ctx.closePath();
+  }
+
   function draw() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const cssW = cv.width / dpr, cssH = cv.height / dpr;
@@ -260,8 +272,7 @@
 
     const tl = toScreen({ x: 0, y: 0 });
     ctx.fillStyle = '#3a2a1c';
-    ctx.beginPath();
-    ctx.roundRect(tl.x - state.M * scale, tl.y - state.M * scale, (state.TW + 2 * state.M) * scale, (state.TH + 2 * state.M) * scale, 14);
+    rrect(tl.x - state.M * scale, tl.y - state.M * scale, (state.TW + 2 * state.M) * scale, (state.TH + 2 * state.M) * scale, 14);
     ctx.fill();
 
     const felt = ctx.createLinearGradient(tl.x, tl.y, tl.x, tl.y + state.TH * scale);
