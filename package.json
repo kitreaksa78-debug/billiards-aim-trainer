@@ -1,0 +1,13 @@
+{
+  "name": "billiards-aim-trainer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Billiards aiming calculator: drag the balls, get ghost-ball aim, cut angle and power",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
