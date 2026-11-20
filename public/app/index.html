@@ -81,6 +81,7 @@
   <div class="status" id="status">ចុច ឬអូសលើតុ ដើម្បីដាក់បាល់ស (CUE) និងបាល់គោល (BALL)</div>
 
   <button id="install" style="display:none; margin-top:10px; flex:none; width:100%">⬇️ ដំឡើងទៅទូរស័ព្ទ</button>
+  <a id="apkLink" href="PoolAim-v1.0.apk" download style="display:block;margin-top:10px;text-align:center;padding:13px;border-radius:12px;border:1px solid #2a3b4e;background:#16202b;color:#dce8f6;font-size:13px;font-weight:600;text-decoration:none">⬇️ ទាញយក APK (App ពិត សម្រាប់ Android)</a>
 
   <details>
     <summary>⚙️ API របស់ App</summary>
@@ -120,7 +121,9 @@
   let scale = 1, offX = 0, offY = 0, drag = null;
 
   // ---------- API ----------
-  const DEFAULT_API = ('https:' === location.protocol ? location.origin : 'https://billiards-aim-trainer.onrender.com');
+  const LIVE_API = 'https://billiards-aim-trainer.onrender.com';
+  const EMBEDDED = location.protocol === 'file:' || location.hostname === 'appassets.androidplatform.net';
+  const DEFAULT_API = (EMBEDDED || 'https:' !== location.protocol) ? LIVE_API : location.origin;
   state.apiBase = (localStorage.getItem('poolAimApi') || DEFAULT_API).replace(/\/+$/, '');
   $('apiBase').value = state.apiBase;
 
@@ -404,6 +407,8 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
   }
+
+  if (EMBEDDED) { const a = $('apkLink'); if (a) a.style.display = 'none'; }
 
   window.__poolApp = {
     state: () => ({ cue: { ...state.cue }, obj: { ...state.obj }, pocketIndex: state.pocketIndex, bank: state.bank, table: { w: state.TW, h: state.TH, R: state.R }, apiBase: state.apiBase, result: state.result, error: state.error }),
