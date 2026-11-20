@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Pool Aim — App</title>
+<style>
+  :root { color-scheme: dark; --bg:#0a0f14; --card:#121a24; --line:#223040; --muted:#8fa2b8; --ok:#4fd99a; --warn:#ffc65c; --bad:#ff7a6b; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 10px 12px calc(20px + env(safe-area-inset-bottom));
+    min-height: 100vh; background: var(--bg); color: #e6eef8;
+    font: 15px/1.55 system-ui, "Khmer OS", sans-serif; overscroll-behavior: contain;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  h1 { font-size: 17px; margin: 0; flex: 1; }
+  .pill { font-size: 11px; padding: 4px 9px; border-radius: 999px; background: #16202b; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .pill.on { color: var(--ok); border-color: #235c42; }
+  .pill.off { color: var(--bad); border-color: #5c2a25; }
+  .pill.busy { color: var(--warn); }
+  canvas { display: block; width: 100%; border-radius: 14px; touch-action: none; background: #07110c; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 0; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 7px 9px; }
+  .stat .k { color: var(--muted); font-size: 10.5px; }
+  .stat .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .v small { font-size: 11px; font-weight: 500; color: #9fb0c4; }
+  .coords { margin-top: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 12px; color: #b8c8da; }
+  .coords b { color: #e6eef8; font-variant-numeric: tabular-nums; }
+  .row { display: flex; gap: 8px; margin-top: 10px; }
+  button {
+    flex: 1; min-height: 46px; border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 600;
+    border: 1px solid #2a3b4e; background: #16202b; color: #dce8f6; font-family: inherit;
+  }
+  button.primary { background: #1d7a4c; border-color: #27a163; color: #fff; }
+  button:active { transform: scale(.99); }
+  .status { margin-top: 8px; font-size: 12.5px; min-height: 18px; color: var(--muted); }
+  .status.ok { color: var(--ok); }
+  .status.warn { color: var(--warn); }
+  .status.bad { color: var(--bad); }
+  details { margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #cfe0f2; }
+  label { display: block; font-size: 11.5px; color: var(--muted); margin: 10px 0 4px; }
+  input[type="url"] {
+    width: 100%; min-height: 42px; padding: 0 10px; border-radius: 10px; background: #0d151d;
+    border: 1px solid var(--line); color: #e6eef8; font: 13px/1 system-ui, monospace;
+  }
+  pre { margin: 8px 0 0; padding: 8px; border-radius: 10px; background: #0d151d; border: 1px solid var(--line); color: #9fe8c4; font-size: 11px; overflow: auto; max-height: 160px; }
+  .hint { margin-top: 10px; font-size: 11.5px; color: #7e91a6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎱 Pool Aim App</h1>
+    <span class="pill" id="apiPill">API …</span>
+  </header>
+
+  <canvas id="table" aria-label="តុប៊ីយ៉ាដ"></canvas>
+
+  <div class="grid">
+    <div class="stat"><div class="k">មុំបញ្ជូន</div><div class="v" id="aimAngle">—<small>°</small></div></div>
+    <div class="stat"><div class="k">មុំកាត់</div><div class="v" id="cutAngle">—<small>°</small></div></div>
+    <div class="stat"><div class="k">កម្លាំង</div><div class="v" id="power">—<small>%</small></div></div>
+  </div>
+
+  <div class="coords" id="coords">API: <b>—</b></div>
+
+  <div class="row">
+    <button class="primary" id="calc">គណនាឡើងវិញ</button>
+    <button id="best">រន្ធល្អបំផុត</button>
+    <button id="bank">ជញ្ជាំង</button>
+  </div>
+
+  <div class="status" id="status">ចុច ឬអូសលើតុ ដើម្បីដាក់បាល់ស (CUE) និងបាល់គោល (BALL)</div>
+
+  <button id="install" style="display:none; margin-top:10px; flex:none; width:100%">⬇️ ដំឡើងទៅទូរស័ព្ទ</button>
+
+  <details>
+    <summary>⚙️ API របស់ App</summary>
+    <label>API base URL (website)</label>
+    <input type="url" id="apiBase" spellcheck="false" autocomplete="off">
+    <div class="row">
+      <button id="saveApi">រក្សាទុក</button>
+      <button id="testApi">តេស្ត API</button>
+    </div>
+    <pre id="debug">មិនទាន់មានទេ</pre>
+    <p class="hint">
+      App នេះផ្ញើ <code>POST /api/aim</code> ជាមួយទីតាំងបាល់ (cue/target) រួចបង្ហាញ
+      <code>startX, startY, endX, endY, aimAngleDeg, cutAngleDeg, powerPct</code> ពី server។
+      វាមិនអានរូបភាព ឬអេក្រង់ហ្គេមទេ — អ្នកដាក់ទីតាំងបាល់ដោយខ្លួនឯង។
+    </p>
+  </details>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('table');
+  const ctx = cv.getContext('2d');
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  const state = {
+    TW: 560, TH: 1120, R: 16, M: 28,
+    cue: { x: 280, y: 840 },
+    obj: { x: 280, y: 392 },
+    pocketIndex: -1,
+    bank: false,
+    portrait: null,
+    result: null,
+    error: '',
+    cb: null, co: null,
+  };
+  let scale = 1, offX = 0, offY = 0, drag = null;
+
+  // ---------- API ----------
+  const DEFAULT_API = ('https:' === location.protocol ? location.origin : 'https://billiards-aim-trainer.onrender.com');
+  state.apiBase = (localStorage.getItem('poolAimApi') || DEFAULT_API).replace(/\/+$/, '');
+  $('apiBase').value = state.apiBase;
+
+  function setPill(text, cls) {
+    const p = $('apiPill');
+    p.textContent = text;
+    p.className = 'pill' + (cls ? ' ' + cls : '');
+  }
+
+  async function callApi(payload, base) {
+    const url = (base || state.apiBase) + '/api/aim';
+    const t0 = performance.now();
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const ms = Math.round(performance.now() - t0);
+    let data;
+    try { data = await res.json(); } catch { data = { status: 'error', message: 'API មិនបានឆ្លើយជា JSON' }; }
+    return { ok: res.ok, code: res.status, ms, data, url };
+  }
+
+  function payload() {
+    return {
+      cue: { x: Math.round(state.cue.x), y: Math.round(state.cue.y) },
+      target: { x: Math.round(state.obj.x), y: Math.round(state.obj.y) },
+      table: { w: state.TW, h: state.TH },
+      pocketIndex: state.pocketIndex,
+      bank: state.bank,
+    };
+  }
+
+  async function compute(showBusy) {
+    if (showBusy) setPill('API …', 'busy');
+    try {
+      const r = await callApi(payload());
+      $('debug').textContent = 'POST ' + r.url + '\n→ HTTP ' + r.code + ' · ' + r.ms + 'ms\n' + JSON.stringify(r.data, null, 1);
+      if (r.ok && r.data && r.data.status === 'success') {
+        state.result = r.data;
+        state.error = '';
+        setPill('API ● ' + r.ms + 'ms', 'on');
+      } else {
+        state.result = null;
+        state.error = (r.data && r.data.message) || ('HTTP ' + r.code);
+        setPill('API ✕ ' + r.code, 'off');
+      }
+    } catch (e) {
+      state.result = null;
+      state.error = 'ភ្ជាប់ API មិនបាន: ' + e.message;
+      setPill('API ✕ offline', 'off');
+      $('debug').textContent = 'ERROR ' + e.message + '\n(' + state.apiBase + '/api/aim)';
+    }
+    draw();
+  }
+
+  let timer = null;
+  const queueCompute = () => { clearTimeout(timer); timer = setTimeout(() => compute(false), 140); };
+
+  // ---------- table ----------
+  function buildTable(isPortrait) {
+    state.portrait = isPortrait;
+    if (isPortrait) { state.TW = 560; state.TH = 1120; }
+    else { state.TW = 1000; state.TH = 500; }
+    state.R = Math.max(12, Math.round(state.TW * 0.0285));
+    state.M = Math.round(state.TW * 0.05);
+    state.cue = { x: state.TW * 0.5, y: state.TH * 0.75 };
+    state.obj = { x: state.TW * 0.5, y: state.TH * 0.35 };
+    state.pocketIndex = -1;
+    state.bank = false;
+    state.result = null;
+  }
+
+  function pockets() {
+    const { TW, TH } = state;
+    return [
+      { x: 0, y: 0 }, { x: TW / 2, y: 0 }, { x: TW, y: 0 },
+      { x: 0, y: TH }, { x: TW / 2, y: TH }, { x: TW, y: TH },
+    ];
+  }
+
+  function resize() {
+    const isPortrait = window.innerHeight >= window.innerWidth;
+    if (isPortrait !== state.portrait) { buildTable(isPortrait); queueCompute(); }
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const ratio = (state.TW + 2 * state.M) / (state.TH + 2 * state.M);
+    const cssW = Math.max(200, Math.round(cv.parentElement.clientWidth));
+    const cssH = Math.round(cssW / ratio);
+    cv.style.height = cssH + 'px';
+    cv.width = Math.round(cssW * dpr);
+    cv.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    scale = Math.min(cssW / (state.TW + 2 * state.M), cssH / (state.TH + 2 * state.M));
+    offX = (cssW - state.TW * scale) / 2;
+    offY = (cssH - state.TH * scale) / 2;
+    draw();
+  }
+
+  const toScreen = (p) => ({ x: offX + p.x * scale, y: offY + p.y * scale });
+  const toTable = (cx, cy) => {
+    const r = cv.getBoundingClientRect();
+    return { x: (cx - r.left - offX) / scale, y: (cy - r.top - offY) / scale };
+  };
+
+  function ball(p, radius, fill, dashed) {
+    const s = toScreen(p), rr = radius * scale;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, rr, 0, Math.PI * 2);
+    if (dashed) {
+      ctx.setLineDash([5, 5]); ctx.strokeStyle = '#ffffffcc'; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
+      return;
+    }
+    const g = ctx.createRadialGradient(s.x - rr * .35, s.y - rr * .35, rr * .15, s.x, s.y, rr);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.25, fill); g.addColorStop(1, '#00000066');
+    ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = '#00000055'; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  function line(a, b, color, width, dash) {
+    const s = toScreen(a), e = toScreen(b);
+    ctx.beginPath(); ctx.setLineDash(dash || []); ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.moveTo(s.x, s.y); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  function draw() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const cssW = cv.width / dpr, cssH = cv.height / dpr;
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const tl = toScreen({ x: 0, y: 0 });
+    ctx.fillStyle = '#3a2a1c';
+    ctx.beginPath();
+    ctx.roundRect(tl.x - state.M * scale, tl.y - state.M * scale, (state.TW + 2 * state.M) * scale, (state.TH + 2 * state.M) * scale, 14);
+    ctx.fill();
+
+    const felt = ctx.createLinearGradient(tl.x, tl.y, tl.x, tl.y + state.TH * scale);
+    felt.addColorStop(0, '#0f7a48'); felt.addColorStop(1, '#0a5c37');
+    ctx.fillStyle = felt; ctx.fillRect(tl.x, tl.y, state.TW * scale, state.TH * scale);
+
+    pockets().forEach((p, i) => {
+      const s = toScreen(p);
+      ctx.beginPath(); ctx.arc(s.x, s.y, 20 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = i === state.pocketIndex ? '#ffcf4d' : '#07110c'; ctx.fill();
+    });
+
+    const r = state.result;
+    if (r) {
+      const ghost = { x: r.endX, y: r.endY };
+      const start = { x: r.startX, y: r.startY };
+      const tgt = r.path && r.path.target ? r.path.target : r.pocket;
+      if (r.bank) {
+        line({ x: r.object.x, y: r.object.y }, { x: tgt.x, y: tgt.y }, '#8be9ff', 2, [4, 5]);
+      } else {
+        line({ x: r.object.x, y: r.object.y }, tgt, '#ffd84d', 2, [6, 5]);
+      }
+      line(start, ghost, '#ffffff', 2.4);
+      ball(ghost, state.R, '#ffffff', true);
+
+      $('aimAngle').innerHTML = r.aimAngleDeg.toFixed(1) + '<small>°</small>';
+      $('cutAngle').innerHTML = r.cutAngleDeg.toFixed(1) + '<small>°</small>';
+      $('power').innerHTML = r.powerPct + '<small>%</small>';
+      $('coords').innerHTML =
+        'start <b>' + r.startX + ', ' + r.startY + '</b> → end <b>' + r.endX + ', ' + r.endY + '</b>' +
+        ' · R <b>' + r.ballRadius + '</b> · ' + (r.bank ? 'bank · ' : '') + r.pocket.name;
+
+      const st = $('status');
+      if (r.cutAngleDeg > 70) {
+        st.className = 'status warn';
+        st.textContent = '⚠️ មុំកាត់ធំ ' + r.cutAngleDeg.toFixed(0) + '° — ពិបាកដាក់ចូល · កម្លាំង ' + r.powerPct + '%';
+      } else {
+        st.className = 'status ok';
+        st.textContent = '✓ ដាក់ចូល ' + r.pocket.name + ' · cut ' + r.cutAngleDeg.toFixed(1) + '° · កម្លាំង ' + r.powerPct + '%';
+      }
+    } else {
+      $('aimAngle').innerHTML = '—<small>°</small>';
+      $('cutAngle').innerHTML = '—<small>°</small>';
+      $('power').innerHTML = '—<small>%</small>';
+      if (state.error) {
+        $('coords').textContent = 'API: ' + state.error;
+        const st = $('status');
+        st.className = 'status bad';
+        st.textContent = '✕ ' + state.error;
+      }
+    }
+
+    ball(state.cue, state.R, '#f4f6fa');
+    ball(state.obj, state.R, '#e8452f');
+
+    const sc = toScreen(state.cue), so = toScreen(state.obj);
+    const fs = Math.max(9, Math.round(state.R * scale * 0.55));
+    ctx.font = '700 ' + fs + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#0b1a12'; ctx.fillText('CUE', sc.x, sc.y + fs * 0.35);
+    ctx.fillStyle = '#fff'; ctx.fillText('BALL', so.x, so.y + fs * 0.35);
+  }
+
+  // ---------- interaction ----------
+  function pick(cx, cy) {
+    const p = toTable(cx, cy);
+    for (let i = 0; i < 6; i++) {
+      const pk = pockets()[i];
+      if (Math.hypot(pk.x - p.x, pk.y - p.y) < state.R * 2.5) return { type: 'pocket', i };
+    }
+    if (Math.hypot(state.cue.x - p.x, state.cue.y - p.y) < state.R * 2.6) return { type: 'cue' };
+    if (Math.hypot(state.obj.x - p.x, state.obj.y - p.y) < state.R * 2.6) return { type: 'obj' };
+    return null;
+  }
+
+  function place(which, cx, cy) {
+    const p = toTable(cx, cy);
+    const b = which === 'cue' ? state.cue : state.obj;
+    b.x = clamp(p.x, state.R, state.TW - state.R);
+    b.y = clamp(p.y, state.R, state.TH - state.R);
+    draw();
+  }
+
+  cv.addEventListener('pointerdown', (e) => {
+    cv.setPointerCapture(e.pointerId);
+    const hit = pick(e.clientX, e.clientY);
+    if (hit && hit.type === 'pocket') {
+      state.pocketIndex = state.pocketIndex === hit.i ? -1 : hit.i;
+      draw(); queueCompute(); return;
+    }
+    if (hit) { drag = hit.type; place(drag, e.clientX, e.clientY); return; }
+    const p = toTable(e.clientX, e.clientY);
+    if (p.x >= 0 && p.x <= state.TW && p.y >= 0 && p.y <= state.TH) { drag = 'cue'; place('cue', e.clientX, e.clientY); }
+  });
+  cv.addEventListener('pointermove', (e) => { if (!drag) return; e.preventDefault(); place(drag, e.clientX, e.clientY); });
+  cv.addEventListener('pointerup', () => { if (drag) { drag = null; queueCompute(); } });
+  cv.addEventListener('pointercancel', () => { if (drag) { drag = null; queueCompute(); } });
+
+  $('calc').onclick = () => compute(true);
+  $('best').onclick = () => { state.pocketIndex = -1; draw(); compute(true); };
+  $('bank').onclick = () => { state.bank = !state.bank; draw(); compute(true); };
+  $('saveApi').onclick = () => {
+    let v = $('apiBase').value.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+    state.apiBase = v;
+    localStorage.setItem('poolAimApi', v);
+    $('apiBase').value = v;
+    compute(true);
+  };
+  $('testApi').onclick = async () => {
+    setPill('API …', 'busy');
+    try {
+      const r = await callApi({ cue: { x: 200, y: 900 }, target: { x: 380, y: 700 }, table: { w: 560, h: 1120 } }, $('apiBase').value.trim().replace(/\/+$/, '') || state.apiBase);
+      $('debug').textContent = 'TEST POST ' + r.url + '\n→ HTTP ' + r.code + ' · ' + r.ms + 'ms\n' + JSON.stringify(r.data, null, 1);
+      setPill(r.ok ? 'API ● ' + r.ms + 'ms' : 'API ✕ ' + r.code, r.ok ? 'on' : 'off');
+    } catch (e) {
+      $('debug').textContent = 'TEST ERROR ' + e.message;
+      setPill('API ✕ offline', 'off');
+    }
+  };
+
+  let installEvent = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installEvent = e;
+    $('install').style.display = 'block';
+  });
+  $('install').onclick = async () => {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice;
+    installEvent = null;
+    $('install').style.display = 'none';
+  };
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 150));
+
+  buildTable(window.innerHeight >= window.innerWidth);
+  resize();
+  compute(true);
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+  }
+
+  window.__poolApp = {
+    state: () => ({ cue: { ...state.cue }, obj: { ...state.obj }, pocketIndex: state.pocketIndex, bank: state.bank, table: { w: state.TW, h: state.TH, R: state.R }, apiBase: state.apiBase, result: state.result, error: state.error }),
+    set: (c, o) => { if (c) Object.assign(state.cue, c); if (o) Object.assign(state.obj, o); draw(); return compute(true); },
+    payload: () => payload(),
+  };
+})();
+</script>
+</body>
+</html>
